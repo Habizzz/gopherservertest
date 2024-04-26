@@ -9,7 +9,7 @@ def send_gopher_request(server_address, server_port, request):
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # Set a timeout for the connection (adjust as needed)
-        client_socket.settimeout(2)  # 5 seconds
+        client_socket.settimeout(5)  # 5 seconds
 
         # Connect to the server
         client_socket.connect((server_address, server_port))
@@ -39,15 +39,21 @@ def send_gopher_request(server_address, server_port, request):
     return response
 
 def parse_line(line):
-    parts = line.split("\t")
-    if len(parts) >= 4:
-        item_type = parts[0][0]
-        directory_name = parts[0][1:]
-        selector = parts[1]
-        hostname = parts[2]
-        port = int(parts[3])
-        return [item_type, directory_name, selector, hostname, port]
-    else:
+    try:
+        parts = line.split("\t")
+        if len(parts) >= 4:
+            item_type = parts[0][0]
+            directory_name = parts[0][1:]
+            selector = parts[1]
+            hostname = parts[2]
+            port = int(parts[3])
+            return [item_type, directory_name, selector, hostname, port]
+        else:
+            return None
+    except (ValueError, IndexError):
+        # Handle exceptions (invalid input)
+        print("Invalid input format.")
+        print("")
         return None
 
 def scan_directories(response):
