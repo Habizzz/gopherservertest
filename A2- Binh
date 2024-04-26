@@ -58,8 +58,7 @@ def parse_line(line):
 
 def scan_directories(response):
     # Counter for directories
-    global directory_count
-
+    directory_count = 0
     lines = response.split("\r\n")
     for line in lines:
         if line.startswith("1"):
@@ -77,13 +76,18 @@ def scan_directories(response):
                 # Increment directory count
                 directory_count += 1
                 
+                # Check if the link is an external link
+                if hostname != "comp3310.ddns.net":
+                    print(f"Ignored external link: {selector} at {hostname}:{port}")
+                    continue  # Skip external links
+
                 # Construct and send the request for the subdirectory
                 new_request = f"{selector}\r\n"
                 new_response = send_gopher_request(hostname, port, new_request)
                 
                 # Recursively scan the subdirectory
                 scan_directories(new_response)
-        
+
         elif line.startswith("0"):  # Identify text and binary files
             parsed_parts = parse_line(line)
             if parsed_parts:
@@ -95,14 +99,21 @@ def download_file(file_name, selector, hostname, port):
     file_request = f"{selector}\r\n"
     file_response = send_gopher_request(hostname, port, file_request)
     
-    # Save the file to the current directory
-    with open(file_name, "wb") as file:
-        file.write(file_response.encode())
-    
-    print(f"Downloaded file: {file_name}, Selector: {selector}, Hostname: {hostname}, Port: {port}")
+    # Check if the downloaded content is properly terminated
+    if file_response.endswith("\r\n.\r\n"):
+        # Save the file to the current directory
+        with open(file_name, "wb") as file:
+            file.write(file_response.encode())
+            # Get the size of the downloaded file
+        file_size = len(file_response.encode())
+        print(f"Downloaded file: {file_name}, Selector: {selector}, Hostname: {hostname}, Port: {port}")
+        print(f"Size of the text file: {file_size} bytes")
+
+    else:
+        print(f"Ignored improperly terminated text file: {file_name}, Selector: {selector}, Hostname: {hostname}, Port: {port}")
+        return  # Skip saving the file if it's improperly terminated
 
 
-directory_count = 0
 # Define the server address and port
 server_address = "comp3310.ddns.net"  # Replace with the actual server address
 server_port = 70  # Default Gopher port
@@ -110,4 +121,3 @@ request = "" + "\r\n"
 # Start scanning from the root directory
 response = send_gopher_request(server_address, server_port, request)
 scan_directories(response)
-print("The number of Gopher directories on the server:", directory_count)
