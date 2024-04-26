@@ -76,13 +76,12 @@ def scan_directories(response):
                 
                 # Recursively scan the subdirectory
                 scan_directories(new_response)
-        
+
         elif line.startswith("0"):  # Identify text and binary files
             parsed_parts = parse_line(line)
             if parsed_parts:
                 _, file_name, selector, hostname, port = parsed_parts
                 download_file(file_name, selector, hostname, port)
-
 
 def download_file(file_name, selector, hostname, port):
     # Send request to download the file
