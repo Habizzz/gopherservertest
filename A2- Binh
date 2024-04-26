@@ -58,7 +58,7 @@ def parse_line(line):
 
 def scan_directories(response):
     # Counter for directories
-    directory_count = 0
+    global directory_count
 
     lines = response.split("\r\n")
     for line in lines:
@@ -101,6 +101,8 @@ def download_file(file_name, selector, hostname, port):
     
     print(f"Downloaded file: {file_name}, Selector: {selector}, Hostname: {hostname}, Port: {port}")
 
+
+directory_count = 0
 # Define the server address and port
 server_address = "comp3310.ddns.net"  # Replace with the actual server address
 server_port = 70  # Default Gopher port
@@ -108,3 +110,4 @@ request = "" + "\r\n"
 # Start scanning from the root directory
 response = send_gopher_request(server_address, server_port, request)
 scan_directories(response)
+print("The number of Gopher directories on the server:", directory_count)
