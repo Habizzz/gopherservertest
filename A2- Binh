@@ -1,0 +1,104 @@
+import socket
+import os
+import datetime
+visited_directories = set()  # Initialize an empty set to store visited directories
+
+def send_gopher_request(server_address, server_port, request):
+    try:
+        # Create a TCP socket
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        # Set a timeout for the connection (adjust as needed)
+        client_socket.settimeout(2)  # 5 seconds
+
+        # Connect to the server
+        client_socket.connect((server_address, server_port))
+
+        # Get the current timestamp
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Print timestamp and client request
+        print("Timestamp:", timestamp)
+        print("Client request:", request)
+
+        # Send the request
+        client_socket.sendall(request.encode())
+
+        # Receive the response
+        response = client_socket.recv(4096).decode()
+
+    except (socket.timeout, ConnectionRefusedError) as e:
+        # Handle connection errors or server unresponsiveness
+        print(f"Error: {e}")
+        print("Server did not respond. Stopping further connections.")
+        response = ""  # Return an empty response
+
+    finally:
+        # Close the socket
+        client_socket.close()
+
+    return response
+
+def parse_line(line):
+    parts = line.split("\t")
+    if len(parts) >= 4:
+        item_type = parts[0][0]
+        directory_name = parts[0][1:]
+        selector = parts[1]
+        hostname = parts[2]
+        port = int(parts[3])
+        return [item_type, directory_name, selector, hostname, port]
+    else:
+        return None
+
+def scan_directories(response):
+    # Counter for directories
+    directory_count = 0
+
+    lines = response.split("\r\n")
+    for line in lines:
+        if line.startswith("1"):
+            parsed_parts = parse_line(line)
+            if parsed_parts:
+                _, _, selector, hostname, port = parsed_parts
+                
+                # Check if the directory has already been visited
+                if (selector, hostname, port) in visited_directories:
+                    continue  # Skip if the directory has already been visited
+                
+                # Add the directory to the set of visited directories
+                visited_directories.add((selector, hostname, port))
+
+                # Increment directory count
+                directory_count += 1
+                
+                # Construct and send the request for the subdirectory
+                new_request = f"{selector}\r\n"
+                new_response = send_gopher_request(hostname, port, new_request)
+                
+                # Recursively scan the subdirectory
+                scan_directories(new_response)
+        
+        elif line.startswith("0"):  # Identify text and binary files
+            parsed_parts = parse_line(line)
+            if parsed_parts:
+                _, file_name, selector, hostname, port = parsed_parts
+                download_file(file_name, selector, hostname, port)
+
+def download_file(file_name, selector, hostname, port):
+    # Send request to download the file
+    file_request = f"{selector}\r\n"
+    file_response = send_gopher_request(hostname, port, file_request)
+    
+    # Save the file to the current directory
+    with open(file_name, "wb") as file:
+        file.write(file_response.encode())
+    
+    print(f"Downloaded file: {file_name}, Selector: {selector}, Hostname: {hostname}, Port: {port}")
+
+# Define the server address and port
+server_address = "comp3310.ddns.net"  # Replace with the actual server address
+server_port = 70  # Default Gopher port
+request = "" + "\r\n"
+# Start scanning from the root directory
+response = send_gopher_request(server_address, server_port, request)
+scan_directories(response)
